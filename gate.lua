@@ -10,24 +10,38 @@ function Gate.new(x, y, component, ...)
     this.x = x
     this.y = y
     this.name = component.name
-    this.inputs = { ... }
+    this.currentState = nil
+    this.lastUpdate = -1
     this.inputNames = component.inputNames
     this.outputNames = component.outputNames
+    this.inputs = { ... }
     this.func = component.func
     this.delay = component.delay
     setmetatable(this, Gate)
     return this
 end
 
+function Gate:setInput(index, input)
+    table.insert(self.inputs, input)
+end
+
 function Gate:getOutputAt(t)
-    local inputs = {}
-    for i, input in pairs(self.inputs) do
-        if type(input) == "number" then
-            return false
-        end
-        inputs[i] = input:getOutputAt(t - self.delay)
+    if self.lastUpdate == t then 
+        return self.currentState 
     end
-    return self.func(unpack(inputs))
+    local inputs = {}
+    for i, input in ipairs(self.inputs) do
+        if type(input) == "number" then
+            self.currentState = false
+            return self.currentState
+        elseif input == self then
+            inputs[i] = input.currentState
+        else
+            inputs[i] = input:getOutputAt(t - self.delay)
+        end
+    end
+    self.currentState = self.func(unpack(inputs))
+    return self.currentState
 end
 
 Gate.NAND = {
@@ -49,12 +63,13 @@ Gate.NOT = {
                     end,
     delay = 0
 }
+
 Gate.AND = {
     name        = "AND",
     inputNames  = {"A", "B"},
     outputNames = {"O"}, 
     func        =   function(a, b) 
-                        return Gate.NOT.func(nand(a, b))
+                        return nand(nand(a, b), nand(a, b))
                     end,
     delay = 0
 }
