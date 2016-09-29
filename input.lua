@@ -22,4 +22,11 @@ Input.CLOCK = {
     end 
 }
 
+Input.CONSTANT = {
+    name = "up",
+    func = function(t)
+        return true
+    end 
+}
+
 return Input
