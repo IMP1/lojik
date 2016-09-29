@@ -9,7 +9,7 @@ function Module.new(x, y, moduleBlueprint, ...)
     this.connections = moduleBlueprint.connections
     this.gates = {}
     for i, gateParams in ipairs(moduleBlueprint.gates) do
-        this.gates[i] = Gate.new(unpack(gateParams))
+        this.gates[i] = Gate.new(gateParams[1] + this.x, gateParams[2] + this.y, gateParams[3])
 
         -- for inputIndex, gateIndex in ipairs(moduleBlueprint.inputs) do
         --     if gateIndex[1] == i then
@@ -17,6 +17,10 @@ function Module.new(x, y, moduleBlueprint, ...)
         --     end
         -- end
         
+        
+    end
+
+    for i, gateParams in ipairs(moduleBlueprint.gates) do
         for _, connection in ipairs(moduleBlueprint.connections) do
             if connection[1] == i then
                 this.gates[i]:setInput(connection[2], this.gates[connection[3]])
