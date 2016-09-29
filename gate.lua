@@ -29,6 +29,7 @@ function Gate:getOutputAt(t)
     if self.lastUpdate == t then 
         return self.currentState 
     end
+    self.lastUpdate = t
     local inputs = {}
     for i, input in ipairs(self.inputs) do
         if type(input) == "number" then
