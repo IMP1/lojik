@@ -1,5 +1,8 @@
 local Input = {}
 Input.__index = Input
+Input.__tostring = function(input)
+    return "Input: " .. input.name
+end
 
 function Input.new(x, y, component)
     local this = {}
