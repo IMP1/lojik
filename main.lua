@@ -53,40 +53,43 @@ function love.load()
             { 1, 1 }, 
             { 2, 1 }
         },
-        connections = {
-            -- { gateX, gateX input index, gateY that gateX will use for input },
-            { 2, 2, 1 }
-        },
         outputs = {
             2
-        }
+        },
+        connections = {
+            -- { gateX, gateX input index, gateY that gateX will use for input },
+            { 2, 2, 1, 1 }
+        },
     }
 
     modules[1] = Module.new(64, 16, blinkToConstant)
-    modules[1]:assignInputs(inputs[2], inputs[1])
+    modules[1]:assignInputs({inputs[2], 1}, {inputs[1], 1})
 
 
 
     local constantToBlink = {
         gates = {
-            {  64,  64, Gate.AND   },
-            { 192,  64, Gate.NOT   },
-            { 256,  64, Gate.OR    },
+            {  64,  64, Gate.AND      },
+            { 160,  64, Gate.NOT      },
+            { 256,  64, Gate.DELAY    },
+            { 344,  64, Gate.SPLITTER },
         },
         inputs = {
-            { 1, 1 },
+            { 1, 2 },
+        },
+        outputs = {
+            { 3, 2 },
         },
         connections = {
-            { 1, 2, 2 },
-            { 2, 1, 1 },
-            { 3, 1, 2 },
-            { 3, 2, 2 },
-        },
-        outputs = { 2 }
+            { 1, 1, 4, 1 },
+            { 2, 1, 1, 1 },
+            { 3, 1, 2, 1 },
+            { 4, 1, 3, 1 },
+        }
     }
 
     modules[2] = Module.new(64, 344, constantToBlink)
-    modules[2]:assignInputs(inputs[3])
+    modules[2]:assignInputs({inputs[3], 1})
 
 end
 
@@ -110,6 +113,37 @@ function love.draw()
     end
 end 
 
+function drawModule(mod)
+    -- Draw Gates
+    for _, gate in pairs(mod.gates) do
+        drawGate(gate)
+    end
+    -- Draw Internal Connections
+    for _, con in pairs(mod.connections) do
+        local gateTo   = mod.gates[con[1]]
+        local gateFrom = mod.gates[con[3]]
+        local from = { getGateOutputPosition (gateFrom, con[4]) }
+        local to   = { getGateInputPosition  (gateTo,   con[2]) }
+        drawConnection(from, to)
+    end
+    -- Draw Input Connections
+    for i, con in ipairs(mod.inputs) do
+
+        local conGateIndex = con[1]
+        local conInputIndex = con[2]
+
+        local gateTo   = mod.gates[conGateIndex]
+        local gateFrom = mod.gates[conGateIndex].inputs[conInputIndex][1]
+
+        local gateFromOutputIndex = mod.gates[i].inputs[con[1]][2]
+
+        local from = { getGateOutputPosition (gateFrom, gateFromOutputIndex) }
+        local to   = { getGateInputPosition  (gateTo,   conInputIndex) }
+        drawConnection(from, to)
+    end
+
+end
+
 function drawInput(input, x, y)
     local mode = input:getOutputAt(current_step) and "fill" or "line"
     love.graphics.rectangle(mode, input.x, input.y, 32, 32)
@@ -120,31 +154,45 @@ function drawGate(gate)
     local mode = gate:getOutputAt(current_step) and "fill" or "line"
     love.graphics.circle(mode, gate.x + 16, gate.y + 16, 16)
     love.graphics.printf(gate.name, gate.x, gate.y + 36, 32, "center")
-    for _, input in pairs(gate.inputs) do
-        drawConnection(input, gate)
-    end
+
 end
 
-function drawModule(mod)
-    for _, gate in pairs(mod.gates) do
-        drawGate(gate)
+function getGateInputPosition(gate, inputIndex)
+    local x = gate.x
+    local y = gate.y
+    if gate.inputs then
+        y = y + 32 * (inputIndex / (#gate.inputs + 1))
+    else
+        y = y + 16
     end
+    return x, y
+end
+
+function getGateOutputPosition(gate, outputIndex)
+    local x = gate.x + 32
+    local y = gate.y
+    if gate.outputs then
+        y = y + 32 * (outputIndex / (#gate.outputs + 1))
+    else
+        y = y + 16
+    end
+    return x, y
 end
 
 function drawConnection(from, to)
-    if (from.x + 32 > to.x) then
+    if (from[1] + 32 > to[1]) then
         local midY
-        if (math.abs(from.y - to.y) < 32) then
-            midY = from.y - 16
+        if (math.abs(from[2] - to[2]) < 32) then
+            midY = from[2] - 16
         else
-            midY = (from.y + 16) * 0.7 + (to.y + 16) * 0.3
+            midY = (from[2] + 16) * 0.7 + (to[2] + 16) * 0.3
         end
-        love.graphics.line(from.x + 32, from.y + 16, from.x + 48, from.y + 16)
-        love.graphics.line(from.x + 48, from.y + 16, from.x + 48, midY)
-        love.graphics.line(from.x + 48, midY, to.x - 16, midY)
-        love.graphics.line(to.x - 16, midY, to.x - 16, to.y + 16)
-        love.graphics.line(to.x, to.y + 16, to.x - 16, to.y + 16)
+        love.graphics.line(from[1],      from[2], from[1] + 16, from[2])
+        love.graphics.line(from[1] + 16, from[2], from[1] + 16, midY)
+        love.graphics.line(from[1] + 16, midY,    to[1] - 16,   midY)
+        love.graphics.line(to[1] - 16,   midY,    to[1] - 16,   to[2])
+        love.graphics.line(to[1],        to[2],   to[1] - 16,   to[2])
     else
-        love.graphics.line(from.x + 32, from.y + 16, to.x, to.y + 16)
+        love.graphics.line(from[1], from[2], to[1], to[2])
     end
 end
