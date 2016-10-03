@@ -1,5 +1,13 @@
 local Gate = {}
 Gate.__index = Gate
+Gate.__tostring = function(gate) 
+    local result = "Gate: "
+    result = result .. gate.name .. " "
+    result = result .. tostring(#gate.inputNames)
+    result = result .. " -> "
+    result = result .. tostring(#gate.outputNames)
+    return result
+end
 
 local function nand(a, b)
     return not (a and b)
@@ -21,8 +29,10 @@ function Gate.new(x, y, component, ...)
     return this
 end
 
-function Gate:setInput(index, input)
-    table.insert(self.inputs, input)
+function Gate:setInput(index, input, inputOutputIndex)
+    assert(inputOutputIndex ~= nil)
+
+    self.inputs[index] = {input, inputOutputIndex}
 end
 
 function Gate:getOutputAt(t)
@@ -32,48 +42,55 @@ function Gate:getOutputAt(t)
     self.lastUpdate = t
     local inputs = {}
     for i, input in ipairs(self.inputs) do
-        if type(input) == "number" then
-            self.currentState = false
-            return self.currentState
-        elseif input == self then
-            inputs[i] = input.currentState
+        if input[1] == self then
+            inputs[i] = input[1].currentState
         else
-            inputs[i] = input:getOutputAt(t - self.delay)
+            local outputs = { input[1]:getOutputAt(t - self.delay) }
+            inputs[i] = outputs[input[2]]
         end
     end
-    self.currentState = self.func(unpack(inputs))
-    return self.currentState
+    self.currentState = { self.func(unpack(inputs)) }
+    return unpack(self.currentState)
 end
 
 Gate.NAND = {
     name        = "NAND",
     inputNames  = {"A", "B"}, 
     outputNames = {"O"}, 
-    func        =   function(a, b) 
-                        return nand(a, b)
-                    end,
-    delay = 0
+    func        = function(a, b) return nand(a, b) end,
+    delay       = 0
 }
 
 Gate.NOT = {
     name        = "NOT",
     inputNames  = {"A"}, 
     outputNames = {"O"}, 
-    func        =   function(a) 
-                        return nand(a, a)
-                    end,
-    delay = 0
+    func        = function(a) return nand(a, a) end,
+    delay       = 0
 }
 
 Gate.AND = {
     name        = "AND",
     inputNames  = {"A", "B"},
     outputNames = {"O"}, 
-    func        =   function(a, b) 
-                        return nand(nand(a, b), nand(a, b))
-                    end,
-    delay = 0
+    func        = function(a, b) return nand(nand(a, b), nand(a, b)) end,
+    delay       = 0
 }
 
+Gate.OUTPUT = {
+    name        = "OUTPUT",
+    inputNames  = { "A" },
+    outputNames = { "O" },
+    func        = function(a) return a end,
+    delay       = 0
+}
+
+Gate.SPLITTER = {
+    name        = "FORK",
+    inputNames  = { "A" },
+    outputNames = { "O", "P" },
+    func        = function(a) return a, a end,
+    delay       = 0
+}
 
 return Gate
